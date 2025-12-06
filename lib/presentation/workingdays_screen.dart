@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:work_holiday/core/api_requests.dart';
 import 'package:work_holiday/models/country/country_details_model.dart';
 import 'package:work_holiday/models/workday/workdays_model.dart';
-import 'package:http/http.dart' as http;
 
 class WorkingdaysScreen extends StatefulWidget {
   final CountryDetailsModel country;
@@ -25,14 +25,26 @@ class _WorkingdaysScreenState extends State<WorkingdaysScreen> {
       isLoading = true;
     });
 
-    final response = await http.get(Uri.parse(
-        "${ApiRequests.workdaysUrl}?country=${widget.country.code}&start=${startDate.toString()}&end=${endDate.toString()}&pretty&key=22ff383e-b26b-4df1-805e-3a0437dd94b7"));
+    try {
+      final response = await http.get(Uri.parse(
+        ApiRequests.workdaysUrlWithParams(
+          countryCode: widget.country.code,
+          startDate: startDate.toIso8601String(),
+          endDate: endDate.toIso8601String(),
+        ),
+      ));
 
-    if (response.statusCode == 200) {
-      workdaysDetails = workdaysModelFromJson(response.body);
-    } else {
+      if (response.statusCode == 200) {
+        workdaysDetails = workdaysModelFromJson(response.body);
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Oops! Something went wrong.")));
+      }
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Oops! Something went wrong.")));
+          .showSnackBar(SnackBar(content: Text("An error occurred: $e")));
     }
 
     setState(() {

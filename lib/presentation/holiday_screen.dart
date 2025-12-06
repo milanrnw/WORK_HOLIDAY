@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:work_holiday/core/api_requests.dart';
 import 'package:work_holiday/models/country/country_details_model.dart';
 import 'package:work_holiday/models/holiday/holiday_main_model.dart';
-import 'package:http/http.dart' as http;
 import 'package:work_holiday/widgets/holiday_card.dart';
 
 class HolidayScreen extends StatefulWidget {
@@ -23,13 +23,24 @@ class _HolidayScreenState extends State<HolidayScreen> {
       isLoading = true;
     });
 
-    final response = await http.get(Uri.parse("${ApiRequests.holidaysUrl}?country=${widget.countryDetails.code}&year=2024&pretty&key=22ff383e-b26b-4df1-805e-3a0437dd94b7"));
-
-    if (response.statusCode == 200) {
-      holidayData = holidayMainModelFromJson(response.body);
-    } else {
+    try {
+      final response = await http.get(Uri.parse(
+        ApiRequests.holidaysUrls(
+          countryCode: widget.countryDetails.code,
+          year: 2024,
+        ),
+      ));
+      if (response.statusCode == 200) {
+        holidayData = holidayMainModelFromJson(response.body);
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Oops! Something went wrong.")));
+      }
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Oops! Something went wrong.")));
+          .showSnackBar(SnackBar(content: Text("An error occurred: $e")));
     }
 
     setState(() {
@@ -56,9 +67,10 @@ class _HolidayScreenState extends State<HolidayScreen> {
           : (holidayData.holidays.isEmpty)
               ? Text("No holidays found")
               : ListView.builder(
-                itemCount: holidayData.holidays.length,
+                  itemCount: holidayData.holidays.length,
                   itemBuilder: (context, index) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10,left: 10,right: 10),
+                    padding:
+                        const EdgeInsets.only(bottom: 10, left: 10, right: 10),
                     child: HolidayCard(
                         index: index,
                         holidayDetails: holidayData.holidays[index]),
